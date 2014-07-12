@@ -43,7 +43,6 @@ def generate_snapshot_to_csv():
     generate_snapshot(data)
     to_csv(data)
 
-
 def generate_snapshot(data):
     print "Creating new snapshot"
     import_finviz(data)
@@ -232,7 +231,7 @@ def compute_bby(data):
     print "Computing BBY"
     for stock in [stock for stock in data.values() if "BB" in stock and "MarketCap" in stock]:
         print stock["Ticker"]
-        stock["BBY"] = -Decimal(stock["BB"])/(Decimal(stock["MarketCap"])*1000000)*100
+        stock["BBY"] = Decimal(stock["BB"])/(Decimal(stock["MarketCap"])*1000000)*100
         print "BBY: " + str(stock["BBY"])
     print "Done computing BBY"
 
