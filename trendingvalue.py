@@ -47,7 +47,7 @@ def generate_snapshot(data):
     print "Creating new snapshot"
     import_finviz(data)
     import_evebitda(data)
-    import_buyback_yield(data, True)
+    import_buyback_yield(data, False)
     compute_rank(data)
     return data
 
@@ -120,7 +120,7 @@ def import_single_buyback_yield(stock):
         try:
             print stock["Ticker"]
             if not stock["MarketCap"]: break
-            query = "http://finance.yahoo.com/q/cf?s="+stock["Ticker"]+"&ql=1"
+            query = "http://finance.yahoo.com/q/cf?s="+stock["Ticker"]
             print query
             r = requests.get(query, timeout=5)
             html = r.text
@@ -163,11 +163,7 @@ def import_single_buyback_yield(stock):
 
 def import_buyback_yield(data, parallel=False):
     print "Importing Buyback Yield"
-    if parallel:
-        pool = multiprocessing.Pool(4)
-        pool.map(import_single_buyback_yield, data.values())
-    else:
-        for stock in data:
+    for stock in data:
             stock = data[stock]
             import_single_buyback_yield(stock)
     print "Completed Buyback Yield" 
