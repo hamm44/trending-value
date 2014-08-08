@@ -1,6 +1,9 @@
 This script scrapes the web and computes the trending value portfolio.
 
-Tested with Python 2.6.6
+Tested with
+
+* Debian GNU/Linux 6.0
+* Python 2.6.6
 
 Install
 =======
