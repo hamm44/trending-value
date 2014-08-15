@@ -20,7 +20,7 @@ stock_keys = [
     "PE",
     "PS",
     "PB",
-    "PFreeCashFlow",
+    "PFCF",
     "DividendYield",
     "PerformanceHalfYear",
     "Price",
@@ -48,6 +48,8 @@ def generate_snapshot(data):
     import_finviz(data)
     import_evebitda(data)
     import_buyback_yield(data, False)
+    compute_bby(data)
+    compute_shy(data)
     compute_rank(data)
     return data
 
@@ -81,7 +83,7 @@ def import_finviz(processed_data):
             if row["P/B"]:
                 stock["PB"] = row["P/B"]
             if row["P/Free Cash Flow"]:
-                stock["PFreeCashFlow"] = row["P/Free Cash Flow"]
+                stock["PFCF"] = row["P/Free Cash Flow"]
             if row["Dividend Yield"]:
                 stock["DividendYield"] = row["Dividend Yield"][:-1]
             if row["Performance (Half Year)"]:
@@ -105,10 +107,13 @@ def import_evebitda(data):
         ebitdas = y.execute(nquery, env="http://www.datatables.org/alltables.env")
         if ebitdas.results:
             for row in ebitdas.results["stats"]:
-                print row["symbol"]
-                if "EnterpriseValueEBITDA" in row and row["EnterpriseValueEBITDA"] and row["EnterpriseValueEBITDA"] != "N/A":
-                    print "EVEBITDA: " + row["EnterpriseValueEBITDA"]
-                    data[row["symbol"]]["EVEBITDA"] = row["EnterpriseValueEBITDA"]
+                try:
+                    print row["symbol"]
+                    if "EnterpriseValueEBITDA" in row and row["EnterpriseValueEBITDA"] and row["EnterpriseValueEBITDA"] != "N/A":
+                        print "EVEBITDA: " + row["EnterpriseValueEBITDA"]
+                        data[row["symbol"]]["EVEBITDA"] = row["EnterpriseValueEBITDA"]
+                except Exception as e:
+                    print e
         else:
             pass
             print "No results"
@@ -168,38 +173,32 @@ def import_buyback_yield(data, parallel=False):
             import_single_buyback_yield(stock)
     print "Completed Buyback Yield" 
 
-def compute_rank(data, step=0):
-    if step == 0:
-        compute_perank(data)
-    if step <=1:
-        compute_psrank(data)
-    if step <=2:
-        compute_pbrank(data)
-    if step <=3:
-        compute_pfcfrank(data)
-    if step <=4:
-        compute_bby(data)
-    if step <=5:
-        compute_shy(data)
-    if step <=6:
-        compute_shyrank(data)
-    if step <=7:
-        compute_evebitdarank(data)
-    if step <=8:
-        set_mediums(data)
-    if step <=9:
-        compute_stockrank(data)
-    if step <=10:
-        compute_overallrank(data)
+def compute_rank(data):
+    compute_perank(data)
+    compute_psrank(data)
+    compute_pbrank(data)
+    compute_pfcfrank(data)
+    compute_shyrank(data)
+    compute_evebitdarank(data)
+    set_mediums(data)
+    compute_stockrank(data)
+    compute_overallrank(data)
     print "Done"
 
+def get_float_value(d, k):
+    try:
+        return float(d[k])
+    except TypeError:
+        return d[k]
+
+# reverse=True means that low values get a high rank
 def compute_somerank(data, key, origkey=None, reverse=True, filterpositive=False):
     print "Computing " + key + " rank"
     if not origkey:
         origkey = key
     i = 0
     value = None
-    stocks = sorted([stock for stock in data.values() if origkey in stock and (not filterpositive or stock[origkey] >= 0)], key=lambda k: k[origkey], reverse=reverse)
+    stocks = sorted([stock for stock in data.values() if origkey in stock and stock[origkey] != None and (not filterpositive or stock[origkey] >= 0)], key=lambda d: get_float_value(d, origkey), reverse=reverse)
     amt = len(stocks)
     for stock in stocks:
         print stock["Ticker"]
@@ -210,18 +209,6 @@ def compute_somerank(data, key, origkey=None, reverse=True, filterpositive=False
         print key+"Rank: " + str(stock[key+"Rank"])
         i +=1
     print "Computed " + key + " Rank"
-
-def compute_perank(data):
-    compute_somerank(data, "PE")
-
-def compute_psrank(data):
-    compute_somerank(data, "PS")
-
-def compute_pbrank(data):
-    compute_somerank(data, "PB")
-
-def compute_pfcfrank(data):
-    compute_somerank(data, "PFCF", "PFreeCashFlow")
 
 def compute_bby(data):
     print "Computing BBY"
@@ -243,6 +230,18 @@ def compute_shy(data):
         print "SHY: " + str(stock["SHY"])
     print "Done computing SHY"
 
+def compute_perank(data):
+    compute_somerank(data, "PE")
+
+def compute_psrank(data):
+    compute_somerank(data, "PS")
+
+def compute_pbrank(data):
+    compute_somerank(data, "PB")
+
+def compute_pfcfrank(data):
+    compute_somerank(data, "PFCF")
+
 def compute_shyrank(data):
     compute_somerank(data, "SHY", reverse=False)
 
@@ -253,10 +252,10 @@ def set_mediums(data):
     print "Setting Mediums"
     for stock in data.values():
         for key in ["PE", "PS", "PB", "PFCF", "EVEBITDA"]:
-            if not key + "Rank" in stock:
+            if not key in stock or stock[key] == None:
                 stock[key + "Rank"] = 50
-            if "EVEBITDA" in stock and stock["EVEBITDA"] < 0:
-                stock["EVEBITDARank"] = 50
+        if "EVEBITDA" in stock and get_float_value(stock, "EVEBITDA") < 0:
+            stock["EVEBITDARank"] = 50
     print "Done setting Mediums"
 
 def compute_stockrank(data):
