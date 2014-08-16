@@ -98,26 +98,78 @@ def import_finviz(processed_data):
 
 def import_evebitda(data):
     print "Importing EV/EBITDA"
-    y = yql.Public()
-    step=100
-    tickers = data.keys()
-    for i in range(0,len(tickers),step):
-        print "From " + tickers[i] + " to " + tickers[min(i+step,len(tickers))-1]
-        nquery = 'select symbol, EnterpriseValueEBITDA.content from yahoo.finance.keystats where symbol in ({0})'.format('"'+('","'.join(tickers[i:i+step-1])+'"'))
-        ebitdas = y.execute(nquery, env="http://www.datatables.org/alltables.env")
-        if ebitdas.results:
-            for row in ebitdas.results["stats"]:
-                try:
-                    print row["symbol"]
-                    if "EnterpriseValueEBITDA" in row and row["EnterpriseValueEBITDA"] and row["EnterpriseValueEBITDA"] != "N/A":
-                        print "EVEBITDA: " + row["EnterpriseValueEBITDA"]
-                        data[row["symbol"]]["EVEBITDA"] = row["EnterpriseValueEBITDA"]
-                except Exception as e:
-                    print e
-        else:
-            pass
-            print "No results"
-    print "EV/EBITDA imported"
+    for stock in data:
+        stock = data[stock]
+        import_single_evebitda(stock)
+    print "Completed EV/EBITDA"
+
+def import_single_evebitda(stock):
+    done = False
+    while not done:
+        try:
+            print stock["Ticker"]
+            query = "http://finance.yahoo.com/q/ks?s="+stock["Ticker"]+"+Key+Statistics"
+            print query
+            r = requests.get(query, timeout=5)
+            html = r.text
+            # Repair html
+            html = html.replace('<div id="yucs-contextual_shortcuts"data-property="finance"data-languagetag="en-us"data-status="active"data-spaceid=""data-cobrand="standard">', '<div id="yucs-contextual_shortcuts" data-property="finance" data-languagetag="en-us" data-status="active" data-spaceid="" data-cobrand="standard">')
+            html = re.sub(r'(?<!\=)"">', '">', html)
+            soup = BeautifulSoup(html)
+            #with open("html.html", "w") as f:
+            #    f.write(html)
+            #with open("file.html", "w") as f:
+            #    f.write(soup.prettify())
+            table = soup.find("table", {"class": "yfnc_datamodoutline1"})
+            if not table: break
+            table = table.find("table")
+            if not table: break
+            sale = 0
+            for tr in table.findAll("tr"):
+                title = tr.td.renderContents().strip()
+                if title == 'Enterprise Value/EBITDA (ttm)<font size="-1"><sup>6</sup></font>:':
+                    td = tr.findAll("td")[1]
+                    evebitda = td.renderContents().strip()
+                    print evebitda
+                    try:
+                        stock["EVEBITDA"] = int(evebitda)
+                    except Exception as e:
+                        pass
+                    break
+            done = True
+        except Exception as e:
+            print e
+            print "Trying again in 1 sec"
+            time.sleep(1)
+                
+    
+
+# Unfortunately the yql query used in this function doesn't seem to work anymore because of yahoo's broken html
+#def import_evebitda(data):
+#    print "Importing EV/EBITDA"
+#    y = yql.Public()
+#    step=100
+#    tickers = data.keys()
+#    for i in range(0,len(tickers),step):
+#        print "From " + tickers[i] + " to " + tickers[min(i+step,len(tickers))-1]
+#        nquery = 'select symbol, EnterpriseValueEBITDA.content from yahoo.finance.keystats where symbol in ({0})'.format('"'+('","'.join(tickers[i:i+step-1])+'"'))
+#        print nquery
+#        ebitdas = y.execute(nquery, env="http://www.datatables.org/alltables.env")
+#        if ebitdas.results:
+#            for row in ebitdas.results["stats"]:
+#                try:
+#                    print row["symbol"]
+#                    if "EnterpriseValueEBITDA" in row and row["EnterpriseValueEBITDA"] and row["EnterpriseValueEBITDA"] != "N/A":
+#                        print "EVEBITDA: " + row["EnterpriseValueEBITDA"]
+#                        data[row["symbol"]]["EVEBITDA"] = row["EnterpriseValueEBITDA"]
+#                except Exception as e:
+#                    print e
+#        else:
+#            pass
+#            print "No results"
+#            print ebitdas
+#            pdb.set_trace()
+#    print "EV/EBITDA imported"
 
 def import_single_buyback_yield(stock):
     done = False
