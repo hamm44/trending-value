@@ -38,14 +38,18 @@ stock_keys = [
     "OVRRank"
 ]
 
+debug = False
+
 def generate_snapshot_to_csv():
     data = {}
-    generate_snapshot(data)
+    data = generate_snapshot(data)
     to_csv(data)
 
 def generate_snapshot(data):
     print "Creating new snapshot"
     import_finviz(data)
+    if debug:
+        data = dict(data.items()[:10])
     import_evebitda(data)
     import_buyback_yield(data, False)
     compute_bby(data)
@@ -70,6 +74,7 @@ def import_finviz(processed_data):
                 stock["Company"] = row["Company"]
             # Ignore companies with market cap below 200M
             if not "Market Cap" in row or row["Market Cap"] == "":
+                print "No Market Cap"
                 continue
             market_cap = Decimal(row["Market Cap"])
             if market_cap < 200:
@@ -132,7 +137,7 @@ def import_single_evebitda(stock):
                     evebitda = td.renderContents().strip()
                     print evebitda
                     try:
-                        stock["EVEBITDA"] = int(evebitda)
+                        stock["EVEBITDA"] = Decimal(evebitda)
                     except Exception as e:
                         pass
                     break
