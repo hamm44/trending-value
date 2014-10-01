@@ -130,11 +130,11 @@ def import_single_evebitda(stock):
                 if title == 'Enterprise Value/EBITDA (ttm)<font size="-1"><sup>6</sup></font>:':
                     td = tr.findAll("td")[1]
                     evebitda = td.renderContents().strip()
-                    print evebitda
                     try:
-                        stock["EVEBITDA"] = int(evebitda)
+                        print evebitda
+                        stock["EVEBITDA"] = Decimal(evebitda)
                     except Exception as e:
-                        pass
+                        print "No evebitda"
                     break
             done = True
         except Exception as e:
